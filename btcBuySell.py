@@ -4,7 +4,13 @@ from pprint import pprint
 from datetime import datetime
 import numpy as np 
 from collections import defaultdict
+from numpy import dot
+from numpy.linalg import norm
+import matplotlib.pyplot as plt
 
+#needed to use because of issues with scipy install
+def getCosSim(a, b):
+	return dot(a, b)/(norm(a)*norm(b))
 
 def getStates(l, period):
     for i in range(0, len(l)-period-period):
@@ -19,6 +25,7 @@ with open('btc.json') as data_file:
 stateDateTimeDict = {}
 stateList = []
 stateDeltaList = []
+mostRecentPrice = 4171.09
 
 for price in reversed(data["dataset"]["data"]):
 	datetime = datetime.strptime(price[0], '%Y-%m-%d') 
@@ -34,29 +41,59 @@ for i in range(1, len(stateList)):
 	stateDeltaList.append(round(((stateList[i]-stateList[i-1])/stateList[i-1] * 100)))
 
 # turn data into vectors of length 7
-weekVectors = list(getStates(stateDeltaList, 7))
+weekVectors = list(getStates(stateDeltaList, 10))
 
 # pprint(stateDict)
 # pprint(stateDeltaList)
-pprint(stateDeltaList)
+#pprint(stateDeltaList)
 pprint("----------------------------------")
-print(weekVectors)
+#print(weekVectors)
 
-currentState = [1, 4, 1, 3, 6, 4, 3]
+currentState = [-7, -2, 6, 4, -3, 2, 4, -4, -1, 3]
 
 runningMax = 0;
 runningPrediction = 0;
 for pastState in weekVectors:
-	print(currentState)
-	print(pastState)
-	if(abs(np.corrcoef(pastState[0], currentState)[0][1])>runningMax):
-		runningMax=abs(np.corrcoef(pastState[0], currentState)[0][1])
+	#print(currentState)
+	#print(pastState)
+	#print(getCosSim(pastState[0], currentState))
+	if(abs(getCosSim(pastState[0], currentState))>runningMax):
+
+		runningMax=abs(getCosSim(pastState[0], currentState))
 		runningPrediction = pastState[1]
-	print(runningPrediction)	
-	print(abs(np.corrcoef(pastState[0], currentState)[0][1]))
+	#	print(runningPrediction)	
+#	print(abs(np.corrcoef(pastState[0], currentState)[0][1]))
 
-print(runningPrediction)
 
+def getPrediction(corpus, currentState):
+	runningMax = 0
+	runningPrediction = 0
+	for corpusState in corpus:
+		if(abs(getCosSim(corpusState[0], currentState))>runningMax and corpusState[1]<100):
+			runningMax = abs(getCosSim(corpusState[0], currentState))
+			runningPrediction = corpusState[1]
+	return runningPrediction
+
+print(getPrediction(weekVectors, currentState))
+currentState.append(runningPrediction)
+
+
+
+for x in range(1,100):
+	currentState.append(getPrediction(weekVectors, currentState[x:]))
+
+for i in range(0, len(currentState)):
+	currentState[i] = (currentState[i]/100)*mostRecentPrice + mostRecentPrice
+	mostRecentPrice = currentState[i]
+print(currentState)
+plt.plot(currentState)
+plt.show()
+#keeps going for number of desired predictions
+# for i in range(0,6):
+# print(runningPrediction)
+# currentState.append(runningPrediction)
+# plt.plot(currentState)
+# plt.show()
 #attempt #1, each "word" is 7 days (arbitrary period, assume some level of periodicity because of week, maybe will do fft later). 
 #Similarity (correlation coeff) between 2 vectors is a weight, set boundary similarity for considered "equality" current goal is just to be able to guess direction accurately
 
