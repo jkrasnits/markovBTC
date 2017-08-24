@@ -7,6 +7,7 @@ from collections import defaultdict
 from numpy import dot
 from numpy.linalg import norm
 import matplotlib.pyplot as plt
+import math
 
 #needed to use because of issues with scipy install
 def getCosSim(a, b):
@@ -37,8 +38,11 @@ for price in reversed(data["dataset"]["data"]):
 		price[4] = 1
 	stateList.append(price[4])
 
+#Use delta of log returns https://quantivity.wordpress.com/2011/02/21/why-log-returns/
 for i in range(1, len(stateList)):
-	stateDeltaList.append(round(((stateList[i]-stateList[i-1])/stateList[i-1] * 100)))
+	#stateDeltaList.append(round(((stateList[i]-stateList[i-1])/stateList[i-1] * 100)))
+	stateDeltaList.append(math.log(stateList[i]/stateList[i-1]))
+
 
 # turn data into vectors of length 7
 weekVectors = list(getStates(stateDeltaList, 10))
@@ -79,7 +83,7 @@ currentState.append(runningPrediction)
 
 
 
-for x in range(1,100):
+for x in range(1,1000):
 	currentState.append(getPrediction(weekVectors, currentState[x:]))
 
 for i in range(0, len(currentState)):
